@@ -1,0 +1,126 @@
+<h1>Durum Takip</h1>
+
+<p>Project debug: <%= @project.name %></p>
+
+<table border="1" cellpadding="6" cellspacing="0" width="100%">
+  <thead>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <tr>
+      <th>Issue</th>
+      <th>Kategori</th>
+      <th>Kullanıcılar</th>
+      <th>Durumlar (Süre olarak)</th>
+      <th>Grafik / Geçmiş</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @issues_status_durations.each do |issue_id, data| %>
+      <tr>
+        <td><%= link_to data[:issue].subject, issue_path(data[:issue]) %></td>
+        <td><%= data[:issue].category&.name || 'Yok' %></td>
+         <td>
+          <% data[:users].each do |status_id, users| %>
+            <% status = IssueStatus.find_by(id: status_id) %>
+            <% if status %>
+              <strong><%= status.name %>:</strong>
+              <%= users.map(&:name).uniq.join(', ') %><br>
+            <% end %>
+          <% end %>
+        </td>
+      
+        <td>
+          <% data[:durations].each do |status_id, duration| %>
+            <% status = IssueStatus.find_by(id: status_id) %>
+            <% if status %>
+              <%= status.name %>: <%= (duration / 3600).round(2) %> saat<br>
+            <% end %>
+          <% end %>
+        </td>
+        
+        <td>
+          <button onclick="toggleChart('<%= issue_id %>')">Grafik Göster</button>
+          <button onclick="toggleHistory('<%= issue_id %>')">Geçmişi Göster</button>
+        </td>
+      </tr>
+
+      <!-- Grafik -->
+      <tr id="chart-row-<%= issue_id %>" style="display:none;">
+        <td colspan="5">
+          <canvas id="chart-<%= issue_id %>" width="400" height="150"></canvas>
+        </td>
+      </tr>
+
+      <!-- Geçmiş Tablosu -->
+      <tr id="history-row-<%= issue_id %>" style="display:none;">
+        <td colspan="5">
+          <strong>Durum Geçmişi:</strong>
+          <table border="1" width="100%" cellpadding="4" cellspacing="0">
+            <thead>
+              <tr>
+                <th>Zaman</th>
+                <th>Eski Durum</th>
+                <th>Yeni Durum</th>
+                <th>Kullanıcı</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @issues_history_data[issue_id].each do |entry| %>
+                <tr>
+                  <td><%= entry[:time].strftime("%Y-%m-%d %H:%M") %></td>
+                  <td><%= entry[:old_status] %></td>
+                  <td><%= entry[:new_status] %></td>
+                  <td><%= entry[:user] %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<script>
+  const issuesGraphData = <%= raw @issues_graph_data.to_json %>;
+  const charts = {};
+
+  function toggleChart(issueId) {
+    const chartRow = document.getElementById(`chart-row-${issueId}`);
+    if (chartRow.style.display === 'none') {
+      chartRow.style.display = '';
+      if (!charts[issueId]) {
+        const ctx = document.getElementById(`chart-${issueId}`).getContext('2d');
+        charts[issueId] = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: issuesGraphData[issueId].labels,
+            datasets: [{
+              label: 'Saat',
+              data: issuesGraphData[issueId].durations,
+              backgroundColor: 'rgba(54, 162, 235, 0.6)'
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              }
+            }
+          }
+        });
+      }
+    } else {
+      chartRow.style.display = 'none';
+    }
+  }
+
+  function toggleHistory(issueId) {
+    const historyRow = document.getElementById(`history-row-${issueId}`);
+    historyRow.style.display = (historyRow.style.display === 'none') ? '' : 'none';
+  }
+</script>
