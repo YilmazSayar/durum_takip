@@ -1,3 +1,1 @@
-Redmine için durum takip eklentisidir. Kullanıcılar görevlerinin ne aşamada olduğunu,
-tahmini bitiş tarihini görebilir.
 
